@@ -5,7 +5,7 @@ services:
     build: .
     image: video-merger-tool:latest
     ports:
-      - "8080:8080"
+      - "8081:8080"
     volumes:
       - ./uploads:/app/uploads
       - ./outputs:/app/outputs
@@ -16,4 +16,4 @@ services:
     environment:
       - FONT_PATH=/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
       - FLASK_ENV=production
-    restart: unless-stopped
+    restart: always

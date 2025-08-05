@@ -254,6 +254,13 @@
                 <div class="range-value" id="scaleDisplay">80%</div>
             </div>
             
+            <div class="form-group" style="margin-top: 20px;">
+                <label style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <input type="checkbox" id="soundEnabled" checked style="margin-right: 10px;">
+                    🔊 完成時に音を鳴らす
+                </label>
+            </div>
+            
             <button type="submit" class="btn" id="submitBtn">
                 動画を合成
             </button>
@@ -350,6 +357,11 @@
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // 音声を有効化（ユーザー操作時に初期化）
+            if (!audioContext && document.getElementById('soundEnabled').checked) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
             const formData = new FormData();
             formData.append('main_video', mainVideo.files[0]);
             formData.append('main_scale', mainScale.value / 100);
@@ -431,10 +443,57 @@
             }, 1000);
         }
         
+        // AudioContextを保持する変数
+        let audioContext = null;
+        
+        // ピロリン音を再生する関数
+        function playPirorin() {
+            // AudioContextを初期化（初回のみ）
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            // サスペンド状態の場合は再開
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            
+            const gainNode = audioContext.createGain();
+            gainNode.connect(audioContext.destination);
+            gainNode.gain.value = 0.3;
+            
+            // ピロリン音：2つの音程を連続で
+            const notes = [
+                { frequency: 800, time: 0, duration: 0.15 },      // ピ
+                { frequency: 1200, time: 0.15, duration: 0.15 }   // ロリン♪
+            ];
+            
+            notes.forEach(note => {
+                const oscillator = audioContext.createOscillator();
+                oscillator.connect(gainNode);
+                oscillator.type = 'sine';
+                oscillator.frequency.value = note.frequency;
+                
+                const startTime = audioContext.currentTime + note.time;
+                oscillator.start(startTime);
+                oscillator.stop(startTime + note.duration);
+            });
+        }
+        
         function showResult(filename) {
             progressContainer.style.display = 'none';
             resultContainer.style.display = 'block';
             downloadBtn.href = `/api/download/${filename}`;
+            
+            // 完成音を再生（設定がONの場合）
+            const soundEnabled = document.getElementById('soundEnabled').checked;
+            if (soundEnabled) {
+                try {
+                    playPirorin();
+                } catch (e) {
+                    console.log('音声再生エラー:', e);
+                }
+            }
         }
         
         function showError(message) {
