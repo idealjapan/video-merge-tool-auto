@@ -196,21 +196,12 @@ class VideoMergerWithAutoBG:
         filter_parts = []
         
         # 背景動画を出力サイズにスケール
-        # 縦動画の場合は、背景が横向きの場合に90度回転させる
-        if orientation == 'vertical':
-            # 縦動画用：必要に応じて回転してからスケール
-            filter_parts.append(
-                f"[0:v]transpose=1,"  # 90度時計回りに回転
-                f"scale={output_width}:{output_height}:"
-                f"force_original_aspect_ratio=increase,"
-                f"crop={output_width}:{output_height}[bg]"
-            )
-        else:
-            filter_parts.append(
-                f"[0:v]scale={output_width}:{output_height}:"
-                f"force_original_aspect_ratio=increase,"
-                f"crop={output_width}:{output_height}[bg]"
-            )
+        # Replicateは既に正しいアスペクト比で生成するので回転は不要
+        filter_parts.append(
+            f"[0:v]scale={output_width}:{output_height}:"
+            f"force_original_aspect_ratio=increase,"
+            f"crop={output_width}:{output_height}[bg]"
+        )
         
         # メイン動画をスケール（出力サイズに対する割合）
         # 横動画の場合は1920、縦動画の場合は1080を基準に
