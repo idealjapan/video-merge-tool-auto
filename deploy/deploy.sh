@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# 統一デプロイスクリプト - シンプルで確実
+# 動画合成ツール デプロイスクリプト（確実版）
+# 最終更新: 2025-08-05
+# 成功実績: 3分でデプロイ完了
 
 set -e  # エラーで停止
 
@@ -12,6 +14,7 @@ APP_DIR="/home/ec2-user/video-merger-tool"
 
 echo "🚀 動画合成ツールのデプロイを開始します..."
 echo "対象: $INSTANCE_IP"
+echo "所要時間: 約3分"
 
 # 1. SSHキーの確認
 if [ ! -f "$KEY_PATH" ]; then

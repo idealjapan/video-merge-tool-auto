@@ -123,12 +123,12 @@ def health_check():
     return jsonify({'status': 'healthy'}), 200
 
 @app.route('/')
-# @requires_auth  # ローカルテスト用に一時的に無効化
+@requires_auth
 def index():
     return render_template('index_auto_simple.html')
 
 @app.route('/api/merge', methods=['POST'])
-# @requires_auth  # ローカルテスト用に一時的に無効化
+@requires_auth
 def merge_videos():
     try:
         app.logger.debug(f"Request files: {request.files}")
@@ -190,7 +190,7 @@ def merge_videos():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/status/<job_id>')
-# @requires_auth  # ローカルテスト用に一時的に無効化
+@requires_auth
 def get_status(job_id):
     if job_id in processing_status:
         return jsonify(processing_status[job_id])
@@ -198,7 +198,7 @@ def get_status(job_id):
         return jsonify({'error': 'ジョブが見つかりません'}), 404
 
 @app.route('/api/download/<filename>')
-# @requires_auth  # ローカルテスト用に一時的に無効化
+@requires_auth
 def download_file(filename):
     try:
         file_path = os.path.join(OUTPUT_FOLDER, secure_filename(filename))
@@ -210,7 +210,7 @@ def download_file(filename):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/config')
-# @requires_auth  # ローカルテスト用に一時的に無効化
+@requires_auth
 def get_config():
     """設定情報を取得"""
     return jsonify({
