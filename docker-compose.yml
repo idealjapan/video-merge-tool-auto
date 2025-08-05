@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    image: video-merger-tool:latest
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./videos:/app/videos
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      - FONT_PATH=/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
+      - FLASK_ENV=production
+    restart: unless-stopped

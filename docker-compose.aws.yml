@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  video-merger:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      # AWS設定
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - AWS_REGION=${AWS_REGION:-ap-northeast-1}
+      - USE_S3=${USE_S3:-true}
+      
+      # アプリケーション設定
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-500000000}
+      
+      # フォントパス
+      - FONT_PATH=/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
+    
+    volumes:
+      # 一時ファイル用（S3を使わない場合）
+      - ./temp:/tmp
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+    
+    restart: unless-stopped
+    
+    # ヘルスチェック
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # リソース制限（t2.micro向け）
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 900M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Nginxプロキシ（オプション）
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - video-merger
+    restart: unless-stopped

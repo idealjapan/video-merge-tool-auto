@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Directories
+uploads/
+outputs/
+videos/
+temp/
+tmp/
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test files
+test_*.mp4
+test_*.png
+test-*.txt
+test_*.jpg
+test_*.jpeg
+
+# Archive
+archive/
+old_code/
+
+# Backups
+*.bak
+*.backup
+
+# Dependencies
+node_modules/
+EOF < /dev/null

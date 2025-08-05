@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自動背景生成動画合成ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .workflow-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .step {
+            text-align: center;
+            padding: 15px;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            line-height: 40px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .step-desc {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .upload-section {
+            margin-bottom: 30px;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 60px 20px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: #fafafa;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f5f3ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f5f3ff;
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .bg-style-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+        
+        .bg-style-option {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        
+        .bg-style-option:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        
+        .bg-style-option.selected {
+            border-color: #667eea;
+            background: #f5f3ff;
+        }
+        
+        .bg-style-icon {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .slider-value {
+            min-width: 50px;
+            text-align: center;
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        .progress-section {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .progress-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .status-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .status-message {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .status-detail {
+            color: #666;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .video-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .info-label {
+            color: #666;
+        }
+        
+        .info-value {
+            font-weight: 600;
+        }
+        
+        .download-btn {
+            display: none;
+            width: 100%;
+            padding: 18px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        
+        .download-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+        
+        .error-message {
+            color: #dc3545;
+            padding: 15px;
+            background: #f8d7da;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 600px) {
+            .main-card {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .workflow-steps {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 自動背景生成動画合成ツール</h1>
+            <p class="subtitle">メイン動画をアップロードするだけで、自動的に背景を生成して合成</p>
+        </div>
+        
+        <div class="main-card">
+            <div class="workflow-steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-title">動画アップロード</div>
+                    <div class="step-desc">メイン動画を選択</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-title">自動判定</div>
+                    <div class="step-desc">縦/横を自動検出</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-title">背景生成</div>
+                    <div class="step-desc">AIが背景を作成</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-title">合成&完成</div>
+                    <div class="step-desc">自動で合成処理</div>
+                </div>
+            </div>
+            
+            <form id="mergeForm">
+                <div class="upload-section">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📹</div>
+                        <h3>メイン動画をドロップまたはクリック</h3>
+                        <p style="margin-top: 10px; color: #666;">対応形式: MP4, AVI, MOV, MKV, WebM（最大500MB）</p>
+                        <input type="file" id="mainVideo" name="main_video" accept="video/*" style="display: none;" required>
+                    </div>
+                    <div id="fileInfo" style="margin-top: 10px; display: none;">
+                        <strong>選択ファイル:</strong> <span id="fileName"></span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>背景スタイル（AI生成）</label>
+                    <div class="bg-style-grid" id="bgStyleGrid">
+                        <div class="bg-style-option selected" data-value="abstract gradient">
+                            <div class="bg-style-icon">🎨</div>
+                            <div>グラデーション</div>
+                        </div>
+                        <div class="bg-style-option" data-value="particle effects">
+                            <div class="bg-style-icon">✨</div>
+                            <div>パーティクル</div>
+                        </div>
+                        <div class="bg-style-option" data-value="geometric patterns">
+                            <div class="bg-style-icon">🔷</div>
+                            <div>幾何学模様</div>
+                        </div>
+                        <div class="bg-style-option" data-value="nature scenes">
+                            <div class="bg-style-icon">🌿</div>
+                            <div>自然風景</div>
+                        </div>
+                        <div class="bg-style-option" data-value="tech circuit">
+                            <div class="bg-style-icon">💻</div>
+                            <div>テクノロジー</div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="bgStyle" name="bg_style" value="abstract gradient">
+                </div>
+                
+                <div class="form-group">
+                    <label for="mainScale">メイン動画のサイズ</label>
+                    <div class="slider-container">
+                        <input type="range" id="mainScale" name="main_scale" 
+                               min="0.5" max="1.0" step="0.1" value="0.8">
+                        <span class="slider-value">80%</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="disclaimerText">注意書きテキスト（オプション）</label>
+                    <input type="text" id="disclaimerText" name="disclaimer_text" 
+                           placeholder="例: ※結果には個人差があります">
+                </div>
+                
+                <div class="form-group">
+                    <label>Replicate API使用</label>
+                    <div class="toggle-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="useReplicate" name="use_replicate" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span id="replicateStatus">AI背景生成を使用</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn">
+                    🚀 動画を自動合成
+                </button>
+            </form>
+        </div>
+        
+        <div class="progress-section" id="progressSection">
+            <div class="progress-header">
+                <div class="status-icon" id="statusIcon">⏳</div>
+                <h2 class="status-message" id="statusMessage">処理中...</h2>
+                <p class="status-detail" id="statusDetail"></p>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+            </div>
+            
+            <div class="video-info" id="videoInfo" style="display: none;">
+                <div class="info-row">
+                    <span class="info-label">動画タイプ:</span>
+                    <span class="info-value" id="videoType">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">出力サイズ:</span>
+                    <span class="info-value" id="outputSize">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">動画の長さ:</span>
+                    <span class="info-value" id="videoDuration">-</span>
+                </div>
+            </div>
+            
+            <a href="#" class="download-btn" id="downloadBtn" style="display: none;">
+                📥 ダウンロード
+            </a>
+            
+            <div id="errorMessage"></div>
+        </div>
+    </div>
+    
+    <script>
+        // DOM要素
+        const form = document.getElementById('mergeForm');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('mainVideo');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const progressSection = document.getElementById('progressSection');
+        const statusIcon = document.getElementById('statusIcon');
+        const statusMessage = document.getElementById('statusMessage');
+        const statusDetail = document.getElementById('statusDetail');
+        const progressFill = document.getElementById('progressFill');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const videoInfo = document.getElementById('videoInfo');
+        const mainScale = document.getElementById('mainScale');
+        const sliderValue = document.querySelector('.slider-value');
+        const bgStyleGrid = document.getElementById('bgStyleGrid');
+        const bgStyleInput = document.getElementById('bgStyle');
+        const useReplicate = document.getElementById('useReplicate');
+        const replicateStatus = document.getElementById('replicateStatus');
+        
+        // 設定を取得
+        fetch('/api/config')
+            .then(res => res.json())
+            .then(config => {
+                if (!config.replicate_enabled) {
+                    useReplicate.checked = false;
+                    useReplicate.disabled = true;
+                    replicateStatus.textContent = 'Replicate API未設定';
+                }
+            });
+        
+        // ドラッグ&ドロップ
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+        
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+                fileInfo.style.display = 'block';
+            }
+        }
+        
+        // スライダー
+        mainScale.addEventListener('input', (e) => {
+            sliderValue.textContent = Math.round(e.target.value * 100) + '%';
+        });
+        
+        // 背景スタイル選択
+        bgStyleGrid.addEventListener('click', (e) => {
+            const option = e.target.closest('.bg-style-option');
+            if (option) {
+                document.querySelectorAll('.bg-style-option').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                option.classList.add('selected');
+                bgStyleInput.value = option.dataset.value;
+            }
+        });
+        
+        // Replicateトグル
+        useReplicate.addEventListener('change', (e) => {
+            replicateStatus.textContent = e.target.checked ? 
+                'AI背景生成を使用' : 'デフォルト背景を使用';
+        });
+        
+        // フォーム送信
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('.submit-btn');
+            
+            // UIを更新
+            submitBtn.disabled = true;
+            progressSection.style.display = 'block';
+            errorMessage.innerHTML = '';
+            downloadBtn.style.display = 'none';
+            videoInfo.style.display = 'none';
+            
+            // アイコンとメッセージをリセット
+            statusIcon.textContent = '⏳';
+            statusMessage.textContent = '処理中...';
+            statusDetail.textContent = '';
+            
+            try {
+                // アップロード
+                const response = await fetch('/api/merge', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || '処理に失敗しました');
+                }
+                
+                // 進捗確認
+                const jobId = data.job_id;
+                checkProgress(jobId);
+                
+            } catch (error) {
+                statusIcon.textContent = '❌';
+                statusMessage.textContent = 'エラーが発生しました';
+                errorMessage.innerHTML = `<div class="error-message">${error.message}</div>`;
+                submitBtn.disabled = false;
+            }
+        });
+        
+        // 進捗確認
+        async function checkProgress(jobId) {
+            try {
+                const response = await fetch(`/api/status/${jobId}`);
+                const data = await response.json();
+                
+                if (data.status === 'completed') {
+                    progressFill.style.width = '100%';
+                    progressFill.textContent = '100%';
+                    statusIcon.textContent = '✅';
+                    statusMessage.textContent = data.message;
+                    statusDetail.textContent = '';
+                    
+                    // 動画情報を表示
+                    if (data.video_info) {
+                        videoInfo.style.display = 'block';
+                        document.getElementById('videoType').textContent = 
+                            data.video_info.orientation === 'vertical' ? '縦動画' : '横動画';
+                        document.getElementById('outputSize').textContent = 
+                            data.video_info.output_size;
+                        document.getElementById('videoDuration').textContent = 
+                            Math.round(data.video_info.duration) + '秒';
+                    }
+                    
+                    // ダウンロードボタン表示
+                    downloadBtn.href = `/api/download/${data.output_file}`;
+                    downloadBtn.style.display = 'block';
+                    
+                    form.querySelector('.submit-btn').disabled = false;
+                    
+                } else if (data.status === 'error') {
+                    statusIcon.textContent = '❌';
+                    statusMessage.textContent = 'エラーが発生しました';
+                    errorMessage.innerHTML = `<div class="error-message">${data.message}</div>`;
+                    form.querySelector('.submit-btn').disabled = false;
+                    
+                } else {
+                    // 処理中
+                    progressFill.style.width = data.progress + '%';
+                    progressFill.textContent = data.progress + '%';
+                    
+                    if (data.message) {
+                        statusDetail.textContent = data.message;
+                    }
+                    
+                    // 1秒後に再確認
+                    setTimeout(() => checkProgress(jobId), 1000);
+                }
+                
+            } catch (error) {
+                statusIcon.textContent = '❌';
+                statusMessage.textContent = 'エラーが発生しました';
+                errorMessage.innerHTML = `<div class="error-message">通信エラー: ${error.message}</div>`;
+                form.querySelector('.submit-btn').disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

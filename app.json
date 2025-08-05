@@ -1,0 +1,25 @@
+{
+  "name": "Video Merger Tool",
+  "description": "動画合成ツール - メイン動画と背景動画を合成",
+  "repository": "https://github.com/yourusername/video-merger-tool",
+  "logo": "https://raw.githubusercontent.com/yourusername/video-merger-tool/main/logo.png",
+  "keywords": ["video", "ffmpeg", "python", "flask"],
+  "stack": "container",
+  "env": {
+    "FLASK_ENV": {
+      "description": "Flask environment",
+      "value": "production"
+    },
+    "MAX_FILE_SIZE": {
+      "description": "Maximum file size in bytes",
+      "value": "500000000"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "free"
+    }
+  },
+  "addons": []
+}

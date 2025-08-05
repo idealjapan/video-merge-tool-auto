@@ -1,0 +1,47 @@
+<!-- 処理完了時のオプション例 -->
+
+<div class="completion-options">
+    <h3>✅ 動画の合成が完了しました！</h3>
+    
+    <!-- オプション1: 即座にダウンロード -->
+    <button class="primary-btn" onclick="downloadVideo()">
+        📥 今すぐダウンロード
+    </button>
+    
+    <!-- オプション2: プレビュー -->
+    <button class="secondary-btn" onclick="previewVideo()">
+        👁️ プレビュー
+    </button>
+    
+    <!-- オプション3: リンクをコピー -->
+    <button class="secondary-btn" onclick="copyLink()">
+        🔗 リンクをコピー（24時間有効）
+    </button>
+    
+    <!-- オプション4: 直接YouTubeにアップロード -->
+    <button class="secondary-btn" onclick="uploadToYouTube()">
+        📺 YouTubeにアップロード
+    </button>
+    
+    <!-- オプション5: スプレッドシートに記録 -->
+    <button class="secondary-btn" onclick="saveToSheet()">
+        📊 スプレッドシートに保存
+    </button>
+</div>
+
+<script>
+// 自動ダウンロードオプション（設定で有効化）
+if (localStorage.getItem('autoDownload') === 'true') {
+    setTimeout(() => {
+        downloadVideo();
+        showNotification('ダウンロードを開始しました');
+    }, 1000);
+}
+
+// ショートカットキー
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && videoReady) {
+        downloadVideo();
+    }
+});
+</script>

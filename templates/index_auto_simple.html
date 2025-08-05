@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動画合成ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f5f3ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f5f3ff;
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        
+        .range-value {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 18px;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .info-box p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 20px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .progress-container {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .status-message {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 16px;
+            color: #666;
+        }
+        
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .download-btn {
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .download-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+        
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8d7da;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .video-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .video-info h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .video-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 動画合成ツール</h1>
+        <p class="subtitle">動画に自動で背景を追加します</p>
+        
+        <form id="uploadForm">
+            <div class="form-group">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <p><strong>動画をドラッグ＆ドロップ</strong></p>
+                    <p>または<span style="color: #667eea;">クリックして選択</span></p>
+                    <p style="font-size: 12px; color: #999; margin-top: 10px;">
+                        対応形式: MP4, AVI, MOV, MKV, WEBM (最大500MB)
+                    </p>
+                    <input type="file" id="mainVideo" name="main_video" accept="video/*" style="display: none;" required>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <p><strong>✨ 自動処理内容：</strong></p>
+                <p>• 動画の向きを自動検出（縦/横）</p>
+                <p>• 動きのある自然・動物の背景を自動生成</p>
+                <p>• 注意書きを自動追加</p>
+                <p>• 最適なサイズに自動調整</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="mainScale">メイン動画のサイズ: <span id="scaleValue">80%</span></label>
+                <input type="range" id="mainScale" min="50" max="100" value="80" step="1">
+                <div class="range-value" id="scaleDisplay">80%</div>
+            </div>
+            
+            <button type="submit" class="btn" id="submitBtn">
+                動画を合成
+            </button>
+        </form>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p class="status-message" id="statusMessage">処理を開始しています...</p>
+        </div>
+        
+        <div class="video-info" id="videoInfo" style="display: none;">
+            <h3>📊 動画情報</h3>
+            <p id="videoDetails"></p>
+        </div>
+        
+        <div class="result-container" id="resultContainer">
+            <h3>✅ 合成が完了しました！</h3>
+            <p style="margin: 20px 0;">
+                <a href="#" class="download-btn" id="downloadBtn">
+                    📥 ダウンロード
+                </a>
+            </p>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+    
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const mainVideo = document.getElementById('mainVideo');
+        const uploadForm = document.getElementById('uploadForm');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const statusMessage = document.getElementById('statusMessage');
+        const resultContainer = document.getElementById('resultContainer');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const submitBtn = document.getElementById('submitBtn');
+        const mainScale = document.getElementById('mainScale');
+        const scaleValue = document.getElementById('scaleValue');
+        const scaleDisplay = document.getElementById('scaleDisplay');
+        const videoInfo = document.getElementById('videoInfo');
+        const videoDetails = document.getElementById('videoDetails');
+        
+        // スケール値の更新
+        mainScale.addEventListener('input', (e) => {
+            const value = e.target.value;
+            scaleValue.textContent = value + '%';
+            scaleDisplay.textContent = value + '%';
+        });
+        
+        // ドラッグ＆ドロップ
+        uploadArea.addEventListener('click', () => mainVideo.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                mainVideo.files = files;
+                updateUploadArea(files[0]);
+            }
+        });
+        
+        mainVideo.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                updateUploadArea(e.target.files[0]);
+            }
+        });
+        
+        function updateUploadArea(file) {
+            const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+            uploadArea.innerHTML = `
+                <div class="upload-icon">🎥</div>
+                <p><strong>${file.name}</strong></p>
+                <p style="color: #666; font-size: 14px;">${fileSize} MB</p>
+                <p style="color: #667eea; font-size: 12px; margin-top: 10px;">クリックして変更</p>
+            `;
+        }
+        
+        // フォーム送信
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('main_video', mainVideo.files[0]);
+            formData.append('main_scale', mainScale.value / 100);
+            // デフォルトの注意書きテキストを追加
+            formData.append('disclaimer_text', '※結果には個人差があり成果を保証するものではありません');
+            
+            // UI更新
+            submitBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            resultContainer.style.display = 'none';
+            errorMessage.style.display = 'none';
+            videoInfo.style.display = 'none';
+            
+            try {
+                // アップロード開始
+                const response = await fetch('/api/merge', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // 進捗を監視
+                    checkProgress(data.job_id);
+                } else {
+                    throw new Error(data.message || '処理の開始に失敗しました');
+                }
+                
+            } catch (error) {
+                showError(error.message);
+                submitBtn.disabled = false;
+                progressContainer.style.display = 'none';
+            }
+        });
+        
+        async function checkProgress(jobId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/status/${jobId}`);
+                    
+                    // レスポンスがJSONかどうか確認
+                    const contentType = response.headers.get("content-type");
+                    if (!contentType || !contentType.includes("application/json")) {
+                        throw new Error("認証エラー: ログインが必要です");
+                    }
+                    
+                    const data = await response.json();
+                    
+                    progressFill.style.width = data.progress + '%';
+                    if (data.message && data.message.trim() !== '') {
+                        statusMessage.textContent = data.message;
+                    }
+                    
+                    if (data.video_info) {
+                        videoInfo.style.display = 'block';
+                        videoDetails.innerHTML = `
+                            向き: ${data.video_info.orientation === 'vertical' ? '縦' : '横'}動画<br>
+                            出力サイズ: ${data.video_info.output_size || data.video_info.original_size}<br>
+                            長さ: ${data.video_info.duration ? data.video_info.duration.toFixed(1) : '---'}秒
+                        `;
+                    }
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(interval);
+                        showResult(data.output_file);
+                        submitBtn.disabled = false;
+                    } else if (data.status === 'error') {
+                        clearInterval(interval);
+                        throw new Error(data.message);
+                    }
+                    
+                } catch (error) {
+                    clearInterval(interval);
+                    console.error('Progress check error:', error);
+                    showError('進捗の取得に失敗しました: ' + error.message);
+                    submitBtn.disabled = false;
+                }
+            }, 1000);
+        }
+        
+        function showResult(filename) {
+            progressContainer.style.display = 'none';
+            resultContainer.style.display = 'block';
+            downloadBtn.href = `/api/download/${filename}`;
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = '❌ ' + message;
+            errorMessage.style.display = 'block';
+            progressContainer.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
