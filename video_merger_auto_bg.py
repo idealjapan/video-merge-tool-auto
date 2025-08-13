@@ -120,9 +120,12 @@ class VideoMergerWithAutoBG:
                 prediction = response.json()
                 prediction_id = prediction['id']
                 
-                # 生成完了まで待機
+                # 生成完了まで待機（最大10分）
                 logger.info("背景動画を生成中...")
-                while True:
+                max_wait_time = 600  # 10分
+                start_time = time.time()
+                
+                while time.time() - start_time < max_wait_time:
                     time.sleep(2)  # チェック間隔を短縮
                     status_response = requests.get(
                         f"https://api.replicate.com/v1/predictions/{prediction_id}",
@@ -152,7 +155,12 @@ class VideoMergerWithAutoBG:
                         logger.error(f"背景生成に失敗しました: {status}")
                         return None
                     
-                    logger.info(f"状態: {status['status']}...")
+                    elapsed = int(time.time() - start_time)
+                    logger.info(f"状態: {status['status']} ({elapsed}秒経過)")
+                
+                # タイムアウト
+                logger.error(f"背景生成がタイムアウトしました（{max_wait_time}秒）")
+                return None
             else:
                 logger.error(f"API呼び出しエラー: {response.status_code}")
                 logger.error(f"レスポンス: {response.text}")
@@ -289,7 +297,6 @@ class VideoMergerWithAutoBG:
             '-t', str(main_info['duration']),
             '-c:v', 'libx264',
             '-preset', 'faster',  # 高速化のためfasterに変更
-            '-crf', '23',
             '-c:a', 'aac',
             '-b:a', '192k',
             '-y',
@@ -309,7 +316,7 @@ class VideoMergerWithAutoBG:
     
     def process_with_auto_background(self, main_video: str, output_video: str,
                                    main_scale: float = 0.8,
-                                   disclaimer_text: Optional[str] = None):
+                                   disclaimer_text: Optional[str] = "※結果には個人差があり成果を保証するものではありません"):
         """メイン処理：背景自動生成＋合成"""
         
         # メイン動画の情報取得

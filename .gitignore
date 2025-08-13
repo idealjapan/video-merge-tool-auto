@@ -56,3 +56,23 @@ old_code/
 # Dependencies
 node_modules/
 EOF < /dev/null
+# Google認証情報（セキュリティのため除外）
+credentials/
+*.json
+*.pickle
+token_*.pickle
+youtube_token.pickle
+
+# テスト動画
+test_*.mp4
+test_*.mov
+temp_*.mp4
+temp_*.mov
+
+# 出力ファイル
+ad-videos/
+test_output/
+test_environment/
+
+# 一時ファイル
+temp_bg_*.mp4
