@@ -36,7 +36,7 @@ jobs:
       
       - name: Setup Google Service Account
         run: |
-          echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}" > credentials/google_service_account.json
+          echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}' > credentials/google_service_account.json
       
       - name: Setup YouTube tokens
         run: |
@@ -46,7 +46,14 @@ jobs:
       
       - name: Setup client secrets
         run: |
-          echo "${{ secrets.CLIENT_SECRETS_JSON }}" > credentials/client_secrets.json
+          echo '${{ secrets.CLIENT_SECRETS_JSON }}' > credentials/client_secrets.json
+      
+      - name: Validate JSON files
+        run: |
+          echo "Validating google_service_account.json..."
+          python3 -c "import json; json.load(open('credentials/google_service_account.json'))" && echo "✅ Valid JSON" || echo "❌ Invalid JSON"
+          echo "Validating client_secrets.json..."
+          python3 -c "import json; json.load(open('credentials/client_secrets.json'))" && echo "✅ Valid JSON" || echo "❌ Invalid JSON"
       
       - name: Create output directories
         run: |
