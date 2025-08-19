@@ -120,9 +120,9 @@ class VideoMergerWithAutoBG:
                 prediction = response.json()
                 prediction_id = prediction['id']
                 
-                # 生成完了まで待機（最大10分）
+                # 生成完了まで待機（最大5分）
                 logger.info("背景動画を生成中...")
-                max_wait_time = 600  # 10分
+                max_wait_time = 300  # 5分（本番用に短縮）
                 start_time = time.time()
                 
                 while time.time() - start_time < max_wait_time:

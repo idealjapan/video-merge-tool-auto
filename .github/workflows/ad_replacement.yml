@@ -1,0 +1,62 @@
+name: 広告自動差し替え
+
+on:
+  schedule:
+    # 毎時0分に実行（UTC時間）
+    # 日本時間で毎時0分にしたい場合は、9時間引く
+    - cron: '0 * * * *'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  replace_ads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # タイムアウト設定
+
+    steps:
+    - name: チェックアウト
+      uses: actions/checkout@v3
+
+    - name: Python環境設定
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 依存パッケージインストール
+      run: |
+        python -m pip install --upgrade pip
+        pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
+        pip install gspread replicate moviepy pillow requests
+
+    - name: 認証ファイル作成
+      run: |
+        # Secretsから認証ファイルを復元
+        mkdir -p credentials
+        echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}" | base64 --decode > credentials/google_service_account.json
+        echo "${{ secrets.CLIENT_SECRETS_JSON }}" | base64 --decode > credentials/client_secrets.json
+        
+        # YouTubeトークンファイルを復元
+        echo "${{ secrets.TOKEN_NB_PICKLE }}" | base64 --decode > token_NB.pickle
+        echo "${{ secrets.TOKEN_OM_PICKLE }}" | base64 --decode > token_OM.pickle
+        echo "${{ secrets.TOKEN_SBC_PICKLE }}" | base64 --decode > token_SBC.pickle
+
+    - name: 不承認広告の処理
+      env:
+        GOOGLE_APPLICATION_CREDENTIALS: credentials/google_service_account.json
+        REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+      run: |
+        python production_disapproval_handler.py
+
+    - name: エラー通知（失敗時）
+      if: failure()
+      run: |
+        # Lark通知（オプション）
+        if [ -n "${{ secrets.LARK_WEBHOOK_URL }}" ]; then
+          curl -X POST "${{ secrets.LARK_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "msg_type": "text",
+              "content": {
+                "text": "⚠️ GitHub Actions: 広告自動差し替えでエラーが発生しました\n詳細: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              }
+            }'
+        fi

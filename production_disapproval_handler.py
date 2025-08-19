@@ -43,66 +43,23 @@ def process_disapproved_ad():
     print(f"   処理対象: {ad['ad_group_name']}")
     print(f"   アカウントID: {ad['account_id']}")
     
-    # approval_status_readerが正しく解析した動画名を使用
+    # 広告グループ名から案件と動画情報を取得
     ad_group_name = ad['ad_group_name']
-    project_name = ad['project_name']
-    search_name = ad['video_name']  # これが正しい動画名
     
-    print(f"   案件名: {project_name}")
-    print(f"   検索動画名: {search_name}")
-    print(f"   ※approval_status_readerから取得した動画名: {ad['video_name']}")
-    
-    # 2. Google Driveから動画を検索
+    # 2. Google Driveから動画を検索（新しい方式：案件別フォルダから検索）
     print("\n2️⃣ Google Driveから動画を検索...")
     finder = GoogleDriveFinder()
     
-    # 動画を検索（完全一致を試みる）
-    videos = finder.list_videos(limit=100)
-    target_video = None
-    
-    # 完全一致を探す
-    for video in videos:
-        video_name_without_ext = video['name'].replace('.mp4', '')
-        if video_name_without_ext == search_name:
-            target_video = video
-            print(f"   ✅ 完全一致: {video['name']}")
-            break
-    
-    # 完全一致がない場合は部分一致を探す
-    if not target_video:
-        # 検索名の各単語が含まれる動画を探す
-        search_words = search_name.replace('_', ' ').lower().split()
-        best_match = None
-        best_score = 0
-        
-        for video in videos:
-            video_name_without_ext = video['name'].replace('.mp4', '').lower()
-            # 各単語が含まれるかチェック
-            score = sum(1 for word in search_words if word in video_name_without_ext)
-            if score > best_score:
-                best_score = score
-                best_match = video
-        
-        if best_match and best_score >= len(search_words) * 0.7:  # 70%以上の単語が一致
-            target_video = best_match
-            print(f"   ⚠️ 部分一致: {best_match['name']} (スコア: {best_score}/{len(search_words)})")
-    
-    if not target_video:
-        print(f"❌ 対象動画が見つかりません: {search_name}")
-        print(f"   Google Driveに該当する動画をアップロードしてください")
-        return False
-    
-    # 3. 動画をダウンロード
-    print("\n3️⃣ 動画ダウンロード...")
-    # 直接ダウンロード（すでにtarget_videoを特定済み）
-    video_path = finder._download_file(
-        target_video['id'], 
-        target_video['name'],
-        search_name  # 広告名として使用
-    )
+    # 広告グループ名から案件別フォルダで動画を検索
+    video_path = finder.find_video_by_ad_group(ad_group_name)
     
     if not video_path:
-        print("❌ ダウンロード失敗")
+        # 解析情報を表示して手動対応を促す
+        parsed = finder.parse_ad_group_name(ad_group_name)
+        print(f"❌ 対象動画が見つかりません")
+        print(f"   案件: {parsed['project']}")
+        print(f"   動画名: {parsed['video_name']}")
+        print(f"   Google Driveの案件フォルダに該当する動画をアップロードしてください")
         return False
     
     print(f"   ✅ ダウンロード完了: {video_path}")
@@ -115,23 +72,30 @@ def process_disapproved_ad():
     output_dir = project_root / 'ad-videos'
     output_dir.mkdir(exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    # 解析情報を取得
+    parsed = finder.parse_ad_group_name(ad_group_name)
+    project_name = parsed['project']
+    search_name = parsed['video_name']
+    
     output_path = output_dir / f"{project_name}_再審査_{timestamp}.mp4"
     
     print("   背景生成中... (1-2分かかります)")
-    success = merger.process_with_auto_background(
+    result = merger.process_with_auto_background(
         str(video_path),
         str(output_path),
         main_scale=0.8,
         disclaimer_text="※結果には個人差があり成果を保証するものではありません"
     )
     
-    if not success or not output_path.exists():
-        print("   ⚠️ 背景合成失敗、元動画を使用")
-        upload_path = video_path
-    else:
+    if result and isinstance(result, dict):
+        output_path = Path(result['output_path'])
         print(f"   ✅ 背景合成完了: {output_path}")
         print(f"   サイズ: {os.path.getsize(output_path) / 1024 / 1024:.1f} MB")
         upload_path = output_path
+    else:
+        print("   ⚠️ 背景合成失敗、元動画を使用")
+        upload_path = video_path
     
     # 5. YouTubeアップロード（案件に応じたチャンネル）
     print("\n5️⃣ YouTubeアップロード...")
@@ -225,7 +189,7 @@ def process_disapproved_ad():
         metadata={
             "original_ad": ad_group_name,
             "reason": "不承認",
-            "background_processed": upload_path == output_path,
+            "background_processed": str(upload_path) == str(output_path),
             "production": True
         }
     )

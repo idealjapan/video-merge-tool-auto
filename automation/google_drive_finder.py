@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 class GoogleDriveFinder:
     """Google Driveから動画を検索・取得"""
     
+    # 案件別のGoogle DriveフォルダID（_CRフォルダ）
+    PROJECT_FOLDERS = {
+        'NB': '19_CXgsduFUUjp8a4oc0A6V-F3CdfnwEY',  # NB_CRフォルダ
+        'OM': '1SdeTusi1KwzF9TDK5wpT-dQt-H0E5F4k',  # OM_CRフォルダ
+        'SBC': '1NXeyriGAJyYihRCQl1tFB7JHz2CeNRFP'  # SBC_CRフォルダ
+    }
+    
     def __init__(self, credentials_file: str = None, folder_id: str = None):
         """
         Args:
@@ -26,7 +33,7 @@ class GoogleDriveFinder:
         if credentials_file is None:
             credentials_file = str(Path(__file__).parent.parent / "credentials" / "google_service_account.json")
         
-        # デフォルトのフォルダIDを設定
+        # デフォルトのフォルダIDを設定（後方互換性のため）
         if folder_id is None:
             folder_id = "1GQSw_hQEsTCKAjtt9FyVmZryVUXsbyLL"
         
@@ -40,7 +47,7 @@ class GoogleDriveFinder:
         try:
             credentials = service_account.Credentials.from_service_account_file(
                 credentials_file,
-                scopes=['https://www.googleapis.com/auth/drive.readonly']
+                scopes=['https://www.googleapis.com/auth/drive']
             )
             service = build('drive', 'v3', credentials=credentials)
             logger.info("Google Drive API初期化成功")
@@ -49,9 +56,176 @@ class GoogleDriveFinder:
             logger.error(f"Google Drive API初期化エラー: {e}")
             raise
     
+    def parse_ad_group_name(self, ad_group_name: str) -> dict:
+        """
+        広告グループ名を解析して案件名と動画名を抽出
+        
+        例: YT_OM_売れっ子イラストレーター_撮影06_お家で趣味のイラストをお仕事にする_MCC02運用46_03_01
+        → {'project': 'OM', 'video_name': '売れっ子イラストレーター_撮影06_お家で趣味のイラストをお仕事にする'}
+        """
+        parts = ad_group_name.split('_')
+        
+        if len(parts) < 3 or parts[0] != 'YT':
+            # 旧形式の場合のフォールバック
+            return {
+                'project': parts[0] if parts else '',
+                'video_name': '_'.join(parts[1:]) if len(parts) > 1 else ad_group_name
+            }
+        
+        # YT_案件名_動画名部分_MCC...
+        project = parts[1]  # OM, NB, SBC
+        
+        # MCCまでの部分を動画名として抽出
+        video_name_parts = []
+        for part in parts[2:]:
+            if 'MCC' in part:
+                break
+            video_name_parts.append(part)
+        
+        video_name = '_'.join(video_name_parts)
+        
+        return {
+            'project': project,
+            'video_name': video_name
+        }
+    
+    def find_video_by_ad_group(self, ad_group_name: str) -> Optional[Path]:
+        """
+        広告グループ名から案件を特定し、適切なフォルダから動画を検索
+        
+        Args:
+            ad_group_name: 広告グループ名
+            
+        Returns:
+            ダウンロードした動画ファイルのパス
+        """
+        # 広告グループ名を解析
+        parsed = self.parse_ad_group_name(ad_group_name)
+        project = parsed['project']
+        video_name = parsed['video_name']
+        
+        logger.info(f"案件: {project}, 動画名: {video_name}")
+        
+        # 案件フォルダIDを取得
+        folder_id = self.PROJECT_FOLDERS.get(project)
+        if not folder_id:
+            logger.error(f"案件 {project} のフォルダIDが設定されていません")
+            # フォールバック：デフォルトフォルダで検索
+            return self.find_and_download(video_name)
+        
+        # 案件フォルダ内で動画を検索
+        return self.find_in_project_folder(folder_id, project, video_name)
+    
+    def find_in_project_folder(self, folder_id: str, project: str, video_name: str) -> Optional[Path]:
+        """
+        特定の案件フォルダから動画を検索してダウンロード
+        """
+        try:
+            # 複数の検索パターンを試行
+            search_patterns = [
+                video_name,  # 完全一致
+                video_name.replace('_', ' '),  # アンダースコアをスペースに
+            ]
+            
+            # 動画名から一部を抽出して検索（例：「愛されクリエイター」など）
+            if '_' in video_name:
+                main_parts = video_name.split('_')[:2]  # 最初の2パーツ
+                search_patterns.append('_'.join(main_parts))
+            
+            for pattern in search_patterns:
+                logger.info(f"{project}フォルダで検索: {pattern}")
+                
+                # クエリを構築
+                query = f"'{folder_id}' in parents and name contains '{pattern}'"
+                logger.info(f"クエリ: {query}")
+                
+                # supportsAllDrivesとincludeItemsFromAllDrivesを追加
+                results = self.service.files().list(
+                    q=query,
+                    fields="files(id, name, mimeType)",
+                    pageSize=20,
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True
+                ).execute()
+                
+                files = results.get('files', [])
+                logger.info(f"検索結果: {len(files)}個のファイル")
+                
+                # 動画ファイルのみをフィルタ
+                video_files = [
+                    f for f in files 
+                    if 'video' in f.get('mimeType', '').lower() 
+                    or any(ext in f['name'].lower() for ext in ['.mp4', '.mov', '.avi', '.mkv'])
+                ]
+                
+                if video_files:
+                    # 最も一致度の高いファイルを選択
+                    best_match = self._find_best_match(video_files, video_name)
+                    if best_match:
+                        logger.info(f"動画ファイル発見: {best_match['name']}")
+                        return self._download_file(best_match['id'], best_match['name'], video_name)
+            
+            logger.warning(f"動画が見つかりません: {video_name}")
+            self._list_folder_contents(folder_id, project)
+            return None
+            
+        except Exception as e:
+            logger.error(f"検索エラー: {e}")
+            return None
+    
+    def _find_best_match(self, files: list, target_name: str) -> Optional[dict]:
+        """最も一致度の高いファイルを選択"""
+        if not files:
+            return None
+        
+        # ファイル名から拡張子を除去して比較
+        from pathlib import Path
+        
+        # 完全一致を最優先
+        for file in files:
+            file_stem = Path(file['name']).stem
+            # 完全一致チェック（スペースとアンダースコアの違いは許容）
+            if file_stem == target_name:
+                logger.info(f"完全一致: {file['name']}")
+                return file
+            if file_stem.replace(' ', '_') == target_name:
+                logger.info(f"完全一致（スペース→アンダースコア）: {file['name']}")
+                return file
+            if file_stem.replace('_', ' ') == target_name:
+                logger.info(f"完全一致（アンダースコア→スペース）: {file['name']}")
+                return file
+        
+        # 完全一致がない場合はNone（曖昧な一致は使わない）
+        logger.warning(f"完全一致するファイルが見つかりません: {target_name}")
+        logger.warning(f"候補ファイル:")
+        for file in files[:5]:  # 最初の5個だけ表示
+            logger.warning(f"  - {file['name']}")
+        
+        return None
+    
+    def _list_folder_contents(self, folder_id: str, project: str):
+        """フォルダ内のファイル一覧を表示（デバッグ用）"""
+        try:
+            query = f"'{folder_id}' in parents"
+            results = self.service.files().list(
+                q=query,
+                fields="files(name, mimeType)",
+                pageSize=30,
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True
+            ).execute()
+            
+            files = results.get('files', [])
+            logger.info(f"\n{project}フォルダ内の動画ファイル:")
+            for file in files:
+                if 'video' in file.get('mimeType', '') or any(ext in file['name'].lower() for ext in ['.mp4', '.mov', '.avi']):
+                    logger.info(f"  - {file['name']}")
+        except Exception as e:
+            logger.error(f"フォルダ内容取得エラー: {e}")
+    
     def find_and_download(self, ad_name: str) -> Optional[Path]:
         """
-        広告名で動画を検索してダウンロード
+        広告名で動画を検索してダウンロード（後方互換性のため維持）
         
         Args:
             ad_name: 広告名
