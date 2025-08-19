@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-本番用不承認広告処理（複数件対応版）
-複数の不承認広告を順番に処理してYouTubeアップロード＆キュー追加
+本番用不承認広告処理
+実際の不承認広告を処理してYouTubeアップロード＆キュー追加
 """
 
 import os
 import sys
 import pickle
-import time
 from pathlib import Path
 from datetime import datetime
 from googleapiclient.discovery import build
@@ -27,24 +26,51 @@ from automation.google_drive_finder import GoogleDriveFinder
 from automation.simple_queue_manager import SimpleQueueManager
 from video_merger_auto_bg import VideoMergerWithAutoBG
 
-def process_single_ad(ad, index, total):
-    """単一の不承認広告を処理"""
-    print(f"\n{'='*40}")
-    print(f"📍 処理中: {index}/{total}")
-    print(f"   広告グループ: {ad['ad_group_name']}")
-    print(f"   アカウントID: {ad['account_id']}")
-    print(f"{'='*40}")
+def process_disapproved_ad():
+    """不承認広告を処理"""
+    print("=" * 80)
+    print("🚨 本番不承認広告処理")
+    print("=" * 80)
+    
+    # 必要なディレクトリを作成
+    Path("logs").mkdir(exist_ok=True)
+    Path("ad-videos").mkdir(exist_ok=True)
+    Path("outputs").mkdir(exist_ok=True)
+    
+    # 1. 不承認広告を取得
+    print("\n1️⃣ 不承認広告を確認...")
+    reader = ApprovalStatusReader()
+    disapproved_ads = reader.get_disapproved_ads()
+    
+    if not disapproved_ads:
+        print("✅ 不承認広告はありません")
+        return True
+    
+    print(f"📊 不承認広告が{len(disapproved_ads)}件見つかりました")
+    
+    # すべての不承認広告を順番に処理
+    processed_count = 0
+    failed_count = 0
+    
+    for index, ad in enumerate(disapproved_ads, 1):
+        print(f"\n{'='*40}")
+        print(f"📍 処理中: {index}/{len(disapproved_ads)}")
+        print(f"   広告グループ: {ad['ad_group_name']}")
+        print(f"   アカウントID: {ad['account_id']}")
+        print(f"{'='*40}")
     
     # 広告グループ名から案件と動画情報を取得
     ad_group_name = ad['ad_group_name']
     
-    # 2. Google Driveから動画を検索
+    # 2. Google Driveから動画を検索（新しい方式：案件別フォルダから検索）
     print("\n2️⃣ Google Driveから動画を検索...")
     finder = GoogleDriveFinder()
     
+    # 広告グループ名から案件別フォルダで動画を検索
     video_path = finder.find_video_by_ad_group(ad_group_name)
     
     if not video_path:
+        # 解析情報を表示して手動対応を促す
         parsed = finder.parse_ad_group_name(ad_group_name)
         print(f"❌ 対象動画が見つかりません")
         print(f"   案件: {parsed['project']}")
@@ -55,8 +81,8 @@ def process_single_ad(ad, index, total):
     print(f"   ✅ ダウンロード完了: {video_path}")
     print(f"   サイズ: {os.path.getsize(video_path) / 1024 / 1024:.1f} MB")
     
-    # 3. 背景合成処理
-    print("\n3️⃣ 背景合成処理...")
+    # 4. 背景合成処理
+    print("\n4️⃣ 背景合成処理...")
     merger = VideoMergerWithAutoBG()
     
     output_dir = project_root / 'ad-videos'
@@ -87,15 +113,15 @@ def process_single_ad(ad, index, total):
         print("   ⚠️ 背景合成失敗、元動画を使用")
         upload_path = video_path
     
-    # 4. YouTubeアップロード
-    print("\n4️⃣ YouTubeアップロード...")
+    # 5. YouTubeアップロード（案件に応じたチャンネル）
+    print("\n5️⃣ YouTubeアップロード...")
     
     # 案件名に応じてトークンファイルを選択
     token_mapping = {
         'NB': 'token_NB.pickle',
         'OM': 'token_OM.pickle',
         'SBC': 'token_SBC.pickle',
-        'RL': 'token_RL.pickle'
+        'RL': 'token_RL.pickle'  # RLチャンネル（トークン取得後に使用可能）
     }
     
     token_filename = token_mapping.get(project_name, 'token_NB.pickle')
@@ -113,8 +139,9 @@ def process_single_ad(ad, index, total):
     
     youtube = build('youtube', 'v3', credentials=creds)
     
+    # タイトルは検索した動画名（広告グループ名から解析した名前）を使用
     title = search_name
-    description = ""
+    description = ""  # 説明文は空
     
     body = {
         'snippet': {
@@ -153,7 +180,7 @@ def process_single_ad(ad, index, total):
             if status:
                 print(f"   進捗: {int(status.progress() * 100)}%", end='\r')
         
-        print()
+        print()  # 改行
         video_id = response['id']
         youtube_url = f"https://www.youtube.com/watch?v={video_id}"
         
@@ -164,17 +191,17 @@ def process_single_ad(ad, index, total):
         print(f"❌ アップロードエラー: {e}")
         return False
     
-    # 5. 広告キューに追加
-    print("\n5️⃣ 広告キューに追加...")
+    # 6. 広告キューに追加
+    print("\n6️⃣ 広告キューに追加...")
     queue_manager = SimpleQueueManager()
     
     process_id = queue_manager.add_to_queue(
         video_url=youtube_url,
         project_name=project_name,
-        ad_name="",
+        ad_name="",  # GAS側で元の広告名 + "_copy_" + タイムスタンプが付けられる
         video_name=title,
-        ad_group_name=ad_group_name,
-        account_id=ad['account_id'],
+        ad_group_name=ad_group_name,  # 実際の広告グループ名
+        account_id=ad['account_id'],   # 実際のアカウントID
         metadata={
             "original_ad": ad_group_name,
             "reason": "不承認",
@@ -188,86 +215,33 @@ def process_single_ad(ad, index, total):
     print(f"   - アカウントID: {ad['account_id']}")
     print(f"   - YouTube URL: {youtube_url}")
     
-    return True
-
-def process_disapproved_ads():
-    """複数の不承認広告を処理"""
-    print("=" * 80)
-    print("🚨 本番不承認広告処理（複数件対応版）")
-    print("=" * 80)
+    # 7. キューステータス確認
+    print("\n7️⃣ キューステータス確認...")
+    status = queue_manager.get_queue_status()
+    for key, value in status.items():
+        print(f"   {key}: {value}")
     
-    # 必要なディレクトリを作成
-    Path("logs").mkdir(exist_ok=True)
-    Path("ad-videos").mkdir(exist_ok=True)
-    Path("outputs").mkdir(exist_ok=True)
-    
-    # 1. 不承認広告を取得
-    print("\n1️⃣ 不承認広告を確認...")
-    reader = ApprovalStatusReader()
-    disapproved_ads = reader.get_disapproved_ads()
-    
-    if not disapproved_ads:
-        print("✅ 不承認広告はありません")
-        return True
-    
-    print(f"📊 不承認広告が{len(disapproved_ads)}件見つかりました")
-    
-    # すべての不承認広告を順番に処理
-    processed_count = 0
-    failed_count = 0
-    results = []
-    
-    for index, ad in enumerate(disapproved_ads, 1):
-        try:
-            success = process_single_ad(ad, index, len(disapproved_ads))
-            
-            if success:
-                processed_count += 1
-                results.append({
-                    'ad_group_name': ad['ad_group_name'],
-                    'status': '成功'
-                })
-                print(f"✅ {index}/{len(disapproved_ads)} 処理成功")
-            else:
-                failed_count += 1
-                results.append({
-                    'ad_group_name': ad['ad_group_name'],
-                    'status': '失敗'
-                })
-                print(f"❌ {index}/{len(disapproved_ads)} 処理失敗")
-            
-            # 次の処理まで少し待機（API制限対策）
-            if index < len(disapproved_ads):
-                print(f"\n⏳ 次の処理まで5秒待機...")
-                time.sleep(5)
-                
-        except Exception as e:
-            print(f"❌ エラー発生: {e}")
-            failed_count += 1
-            results.append({
-                'ad_group_name': ad['ad_group_name'],
-                'status': f'エラー: {str(e)}'
-            })
-    
-    # 最終サマリー
     print("\n" + "=" * 80)
-    print("🎉 全処理完了！")
-    print(f"\n📊 最終結果:")
-    print(f"   総数: {len(disapproved_ads)}件")
-    print(f"   成功: {processed_count}件")
-    print(f"   失敗: {failed_count}件")
-    
-    print(f"\n📋 詳細:")
-    for i, result in enumerate(results, 1):
-        print(f"   {i}. {result['ad_group_name']}: {result['status']}")
-    
+    print("🎉 本番不承認処理完了！")
+    print(f"\n📊 結果サマリー:")
+    print(f"   不承認広告: {ad_group_name}")
+    print(f"   新動画: {title}")
+    print(f"   YouTube: {youtube_url}")
+    print(f"   背景合成: {'成功' if upload_path == output_path else 'スキップ'}")
+    print(f"   キュー: 登録済み（GAS処理待ち）")
     print("\n次のステップ:")
     print("1. スプレッドシートの「広告キュー」シートを確認")
     print("2. GASで processQueueFromSheets() を実行")
     print("=" * 80)
     
-    return processed_count > 0
+    return True
 
 if __name__ == "__main__":
-    success = process_disapproved_ads()
-    exit(0 if success else 1)
+    try:
+        success = process_disapproved_ad()
+        sys.exit(0 if success else 1)
+    except Exception as e:
+        print(f"\n❌ エラーが発生しました: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
