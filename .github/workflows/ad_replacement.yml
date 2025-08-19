@@ -49,14 +49,5 @@ jobs:
     - name: エラー通知（失敗時）
       if: failure()
       run: |
-        # Lark通知（オプション）
-        if [ -n "${{ secrets.LARK_WEBHOOK_URL }}" ]; then
-          curl -X POST "${{ secrets.LARK_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "msg_type": "text",
-              "content": {
-                "text": "⚠️ GitHub Actions: 広告自動差し替えでエラーが発生しました\n詳細: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-              }
-            }'
-        fi
+        # Lark通知を無効化
+        echo "Lark通知は無効化されています"
