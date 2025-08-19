@@ -15,8 +15,11 @@ from googleapiclient.http import MediaFileUpload
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = str(project_root / 'credentials' / 'google_service_account.json')
-os.environ['REPLICATE_API_TOKEN'] = 'r8_b8yPR5AADdMQz0VArWeBNE6zdfjJ4s22rguio'
+# 環境変数が設定されていない場合のみデフォルト値を設定
+if 'GOOGLE_APPLICATION_CREDENTIALS' not in os.environ:
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = str(project_root / 'credentials' / 'google_service_account.json')
+if 'REPLICATE_API_TOKEN' not in os.environ:
+    os.environ['REPLICATE_API_TOKEN'] = 'r8_b8yPR5AADdMQz0VArWeBNE6zdfjJ4s22rguio'
 
 from automation.approval_status_reader import ApprovalStatusReader
 from automation.google_drive_finder import GoogleDriveFinder
@@ -28,6 +31,11 @@ def process_disapproved_ad():
     print("=" * 80)
     print("🚨 本番不承認広告処理")
     print("=" * 80)
+    
+    # 必要なディレクトリを作成
+    Path("logs").mkdir(exist_ok=True)
+    Path("ad-videos").mkdir(exist_ok=True)
+    Path("outputs").mkdir(exist_ok=True)
     
     # 1. 不承認広告を取得
     print("\n1️⃣ 不承認広告を確認...")
@@ -221,5 +229,11 @@ def process_disapproved_ad():
     return True
 
 if __name__ == "__main__":
-    success = process_disapproved_ad()
-    sys.exit(0 if success else 1)
+    try:
+        success = process_disapproved_ad()
+        sys.exit(0 if success else 1)
+    except Exception as e:
+        print(f"\n❌ エラーが発生しました: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
