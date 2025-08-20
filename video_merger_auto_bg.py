@@ -263,21 +263,11 @@ class VideoMergerWithAutoBG:
                     f"boxborderw=15[v]"
                 )
             else:
-                # フォントファイルがない場合でもASCII文字で表示
-                logger.warning("No Japanese font file found. Using ASCII text as fallback.")
-                # 英語の代替テキスト
-                fallback_text = "Individual results may vary"
-                filter_parts.append(
-                    f"[composite]drawtext="
-                    f"text='{fallback_text}':"
-                    f"fontsize={font_size}:"
-                    f"fontcolor=white:"
-                    f"x=(w-text_w)/2:"
-                    f"y=20:"
-                    f"box=1:"
-                    f"boxcolor=gray@0.7:"
-                    f"boxborderw=15[v]"
-                )
+                # フォントファイルがない場合はエラー
+                error_msg = "CRITICAL: Japanese font not found! Cannot add disclaimer text."
+                logger.error(error_msg)
+                logger.error("Please install fonts-noto-cjk package: sudo apt-get install fonts-noto-cjk")
+                raise RuntimeError(error_msg)
             
             final_output = "[v]"
         else:
