@@ -1,12 +1,12 @@
 name: Process Disapproved Ads
 
 on:
-  # 手動実行
+  # 手動実行のみ
   workflow_dispatch:
   
-  # 定期実行（10分ごと）
-  schedule:
-    - cron: '*/10 * * * *'  # UTC時間で10分ごと（日本時間では+9時間）
+  # スケジュール実行は無効化（必要に応じてコメントアウトを解除）
+  # schedule:
+  #   - cron: '*/10 * * * *'  # UTC時間で10分ごと（日本時間では+9時間）
 
 jobs:
   process:
