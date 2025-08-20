@@ -49,6 +49,8 @@ def process_single_ad(ad, index, total):
         print(f"❌ 対象動画が見つかりません")
         print(f"   案件: {parsed['project']}")
         print(f"   動画名: {parsed['video_name']}")
+        if not parsed.get('has_mcc', True):
+            print(f"   ⚠️ 注意: MCC記載が欠けている可能性があります")
         print(f"   Google Driveの案件フォルダに該当する動画をアップロードしてください")
         return False
     

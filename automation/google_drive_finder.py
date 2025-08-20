@@ -58,35 +58,64 @@ class GoogleDriveFinder:
     
     def parse_ad_group_name(self, ad_group_name: str) -> dict:
         """
-        広告グループ名を解析して案件名と動画名を抽出
+        広告グループ名を解析して案件名と動画名を抽出（改善版）
         
-        例: YT_OM_売れっ子イラストレーター_撮影06_お家で趣味のイラストをお仕事にする_MCC02運用46_03_01
-        → {'project': 'OM', 'video_name': '売れっ子イラストレーター_撮影06_お家で趣味のイラストをお仕事にする'}
+        正しい形式:
+        YT_OM_売れっ子イラストレーター_撮影06_お家で趣味のイラストをお仕事にする_MCC02運用46_03_01
+        → 動画名: 売れっ子イラストレーター_撮影06_お家で趣味のイラストをお仕事にする
+        
+        MCCつけ忘れの形式:
+        YT_NB_老後は考えるな_撮影01_老後のことひとりで考えていませんか？_AIツール素材をフリー素材に_01_01
+        → 動画名: 老後は考えるな_撮影01_老後のことひとりで考えていませんか？_AIツール素材をフリー素材に
         """
+        import re
+        
         parts = ad_group_name.split('_')
         
         if len(parts) < 3 or parts[0] != 'YT':
             # 旧形式の場合のフォールバック
             return {
                 'project': parts[0] if parts else '',
-                'video_name': '_'.join(parts[1:]) if len(parts) > 1 else ad_group_name
+                'video_name': '_'.join(parts[1:]) if len(parts) > 1 else ad_group_name,
+                'has_mcc': False
             }
         
-        # YT_案件名_動画名部分_MCC...
-        project = parts[1]  # OM, NB, SBC
+        # YT_案件名_以降を解析
+        project = parts[1]  # NB, OM, SBC, RL
         
-        # MCCまでの部分を動画名として抽出
+        # MCCが含まれているか確認
+        has_mcc = any('MCC' in part for part in parts)
+        
+        # 末尾の数字パターンを検出（_数字_数字 または _数字_数字_数字）
+        trailing_number_pattern = re.compile(r'^\d+$')
+        
+        # 後ろから数字だけの部分を特定
+        trailing_numbers = []
+        for i in range(len(parts) - 1, 1, -1):  # YTと案件名は除外
+            if trailing_number_pattern.match(parts[i]):
+                trailing_numbers.insert(0, parts[i])
+            else:
+                break
+        
+        # MCCまたは末尾の数字の前までを動画名として扱う
         video_name_parts = []
-        for part in parts[2:]:
+        
+        for i, part in enumerate(parts[2:], 2):  # YTと案件名の後から
+            # MCC部分に到達したら終了
             if 'MCC' in part:
                 break
+            # 末尾の数字部分に到達したら終了
+            if trailing_numbers and i >= len(parts) - len(trailing_numbers):
+                break
+            
             video_name_parts.append(part)
         
         video_name = '_'.join(video_name_parts)
         
         return {
             'project': project,
-            'video_name': video_name
+            'video_name': video_name,
+            'has_mcc': has_mcc
         }
     
     def find_video_by_ad_group(self, ad_group_name: str) -> Optional[Path]:
@@ -103,8 +132,11 @@ class GoogleDriveFinder:
         parsed = self.parse_ad_group_name(ad_group_name)
         project = parsed['project']
         video_name = parsed['video_name']
+        has_mcc = parsed.get('has_mcc', True)
         
         logger.info(f"案件: {project}, 動画名: {video_name}")
+        if not has_mcc:
+            logger.warning(f"⚠️ MCC記載が欠けている可能性があります: {ad_group_name}")
         
         # 案件フォルダIDを取得
         folder_id = self.PROJECT_FOLDERS.get(project)
