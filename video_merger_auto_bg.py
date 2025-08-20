@@ -247,6 +247,10 @@ class VideoMergerWithAutoBG:
                     logger.info(f"Using font: {font}")
                     break
             
+            if not font_file:
+                logger.warning("No Japanese font found. Text may be garbled.")
+                logger.info(f"Searched fonts: {japanese_fonts}")
+            
             if font_file:
                 # フォントファイルを使用
                 filter_parts.append(

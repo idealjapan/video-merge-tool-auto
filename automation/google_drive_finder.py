@@ -72,11 +72,28 @@ class GoogleDriveFinder:
         
         parts = ad_group_name.split('_')
         
-        if len(parts) < 3 or parts[0] != 'YT':
-            # 旧形式の場合のフォールバック
+        # パーツが少なすぎる場合や、YTで始まらない場合
+        if len(parts) < 2:
+            # 完全に異なる形式
+            return {
+                'project': '',
+                'video_name': ad_group_name,
+                'has_mcc': False
+            }
+        
+        if parts[0] != 'YT':
+            # 旧形式の場合のフォールバック（YTで始まらない）
             return {
                 'project': parts[0] if parts else '',
-                'video_name': '_'.join(parts[1:]) if len(parts) > 1 else ad_group_name,
+                'video_name': '_'.join(parts[1:]) if len(parts) > 1 else '',
+                'has_mcc': False
+            }
+        
+        # YT_のみの場合
+        if len(parts) < 3:
+            return {
+                'project': parts[1] if len(parts) > 1 else '',
+                'video_name': '',
                 'has_mcc': False
             }
         

@@ -26,8 +26,10 @@ class Config:
             ]
         elif system == "Linux":
             return [
-                "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
                 "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+                "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf",
+                "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Bold.otf",
                 "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
                 "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
