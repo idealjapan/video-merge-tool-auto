@@ -9,6 +9,7 @@ import logging
 from typing import Dict, Tuple, Optional
 from background_prompts import BackgroundPromptGenerator
 from config import Config
+from font_finder import find_japanese_font
 
 # ログ設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -237,26 +238,22 @@ class VideoMergerWithAutoBG:
         if disclaimer_text:
             font_size = 32 if orientation == 'horizontal' else 28
             
-            # OS別のフォントパスを取得
-            japanese_fonts = Config.get_font_paths()
-            
-            font_file = None
-            for font in japanese_fonts:
-                if os.path.exists(font):
-                    font_file = font
-                    logger.info(f"Using font: {font}")
-                    break
+            # 日本語フォントを確実に見つける
+            font_file = find_japanese_font()
             
             if not font_file:
-                logger.warning("No Japanese font found. Text may be garbled.")
-                logger.info(f"Searched fonts: {japanese_fonts}")
+                logger.error("No Japanese font found!")
+                logger.info("Please install fonts-noto-cjk package on Linux")
+                logger.info("Using fallback English text instead")
             
             if font_file:
-                # フォントファイルを使用
+                # フォントファイルを使用（エスケープ処理を追加）
+                escaped_text = disclaimer_text.replace("'", "'\\''")
+                escaped_font = font_file.replace("'", "'\\''")
                 filter_parts.append(
                     f"[composite]drawtext="
-                    f"fontfile='{font_file}':"
-                    f"text='{disclaimer_text}':"
+                    f"fontfile='{escaped_font}':"
+                    f"text='{escaped_text}':"
                     f"fontsize={font_size}:"
                     f"fontcolor=white:"
                     f"x=(w-text_w)/2:"
@@ -266,11 +263,13 @@ class VideoMergerWithAutoBG:
                     f"boxborderw=15[v]"
                 )
             else:
-                # フォントファイルがない場合はfont名で指定
+                # フォントファイルがない場合でもASCII文字で表示
+                logger.warning("No Japanese font file found. Using ASCII text as fallback.")
+                # 英語の代替テキスト
+                fallback_text = "Individual results may vary"
                 filter_parts.append(
                     f"[composite]drawtext="
-                    f"font='Hiragino Sans':"
-                    f"text='{disclaimer_text}':"
+                    f"text='{fallback_text}':"
                     f"fontsize={font_size}:"
                     f"fontcolor=white:"
                     f"x=(w-text_w)/2:"

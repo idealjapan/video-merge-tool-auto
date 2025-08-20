@@ -29,7 +29,22 @@ jobs:
           
           # ffmpegと日本語フォントのインストール
           sudo apt-get update
-          sudo apt-get install -y ffmpeg fonts-noto-cjk fonts-noto
+          sudo apt-get install -y ffmpeg fonts-noto-cjk fonts-noto fontconfig
+          
+          # フォントキャッシュを更新
+          fc-cache -fv
+          
+          # フォントの確認とパス検証
+          echo "Checking installed fonts..."
+          fc-list | grep -i noto | head -5
+          
+          # 実際のフォントファイルパスを確認
+          echo "Verifying font file paths..."
+          ls -la /usr/share/fonts/opentype/noto/ 2>/dev/null || echo "opentype/noto not found"
+          ls -la /usr/share/fonts/truetype/noto/ 2>/dev/null || echo "truetype/noto not found"
+          
+          # どこにインストールされたか確認
+          dpkg -L fonts-noto-cjk | grep -E "\.(ttc|otf|ttf)$" | head -5
       
       - name: Create credentials directory
         run: mkdir -p credentials
