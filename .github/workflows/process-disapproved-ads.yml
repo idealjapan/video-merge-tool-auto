@@ -4,9 +4,9 @@ on:
   # 手動実行
   workflow_dispatch:
   
-  # 定期実行（2時間ごと）
+  # 定期実行（10分ごと）
   schedule:
-    - cron: '0 */2 * * *'  # UTC時間で2時間ごと（日本時間では+9時間）
+    - cron: '*/10 * * * *'  # UTC時間で10分ごと（日本時間では+9時間）
 
 jobs:
   process:
