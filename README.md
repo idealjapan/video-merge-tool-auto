@@ -169,7 +169,7 @@ logging.basicConfig(level=logging.DEBUG)
 ```
 
 ## ライセンス
-© 2025 開発者: 藤井慎吾
+© 2025 開発者: Shingo Ishikiriyama
 
 ## サポート
 問題が発生した場合は、GitHubのIssuesで報告してください。
