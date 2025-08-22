@@ -16,10 +16,14 @@ ENV/
 
 # Directories
 uploads/
-outputs/
+outputs/*
+!outputs/.gitkeep
 videos/
 temp/
 tmp/
+test_output/
+logs/*
+!logs/.gitkeep
 
 # Docker
 .docker/
