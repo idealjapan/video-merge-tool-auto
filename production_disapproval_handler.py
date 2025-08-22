@@ -38,6 +38,11 @@ def process_single_ad(ad, index, total):
     # 広告グループ名から案件と動画情報を取得
     ad_group_name = ad['ad_group_name']
     
+    # 特定の広告グループをスキップ（デマンドジェネレーション以外）
+    if 'YT_NB_7stepパク応援特典8選_MCC02運用02_28_01' in ad_group_name:
+        print(f"   ⚠️ スキップ: この広告グループはデマンドジェネレーション広告ではありません")
+        return False
+    
     # 2. Google Driveから動画を検索
     print("\n2️⃣ Google Driveから動画を検索...")
     finder = GoogleDriveFinder()
@@ -231,12 +236,19 @@ def process_disapproved_ads():
                 })
                 print(f"✅ {index}/{len(disapproved_ads)} 処理成功")
             else:
-                failed_count += 1
-                results.append({
-                    'ad_group_name': ad['ad_group_name'],
-                    'status': '失敗'
-                })
-                print(f"❌ {index}/{len(disapproved_ads)} 処理失敗")
+                # スキップの場合は失敗にカウントしない
+                if 'YT_NB_7stepパク応援特典8選_MCC02運用02_28_01' in ad['ad_group_name']:
+                    results.append({
+                        'ad_group_name': ad['ad_group_name'],
+                        'status': 'スキップ（非デマンドジェネレーション）'
+                    })
+                else:
+                    failed_count += 1
+                    results.append({
+                        'ad_group_name': ad['ad_group_name'],
+                        'status': '失敗'
+                    })
+                    print(f"❌ {index}/{len(disapproved_ads)} 処理失敗")
             
             # 次の処理まで少し待機（API制限対策）
             if index < len(disapproved_ads):
