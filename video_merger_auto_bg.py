@@ -9,7 +9,6 @@ import logging
 from typing import Dict, Tuple, Optional
 from background_prompts import BackgroundPromptGenerator
 from config import Config
-from font_finder import find_japanese_font
 
 # ログ設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -239,7 +238,7 @@ class VideoMergerWithAutoBG:
             font_size = 32 if orientation == 'horizontal' else 28
             
             # 日本語フォントを確実に見つける
-            font_file = find_japanese_font()
+            font_file = Config.get_font_path()
             
             if not font_file:
                 logger.error("No Japanese font found!")
