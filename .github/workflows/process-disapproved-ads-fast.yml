@@ -47,8 +47,21 @@ jobs:
               from automation.approval_status_reader import ApprovalStatusReader
               reader = ApprovalStatusReader()
               ads = reader.get_disapproved_ads()
-              count = len(ads)
-              print(f"Found {count} disapproved ads")
+              
+              # デマンドジェネレーション以外の広告をフィルタリング
+              skip_patterns = [
+                  'YT_NB_7stepパク応援特典8選_MCC02運用02_28_01'
+              ]
+              
+              filtered_ads = []
+              for ad in ads:
+                  if ad['ad_group_name'] in skip_patterns:
+                      print(f"⚠️ スキップ（非デマンドジェネレーション）: {ad['ad_group_name']}")
+                  else:
+                      filtered_ads.append(ad)
+              
+              count = len(filtered_ads)
+              print(f"Found {count} disapproved ads (after filtering)")
               with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
                   f.write(f"count={count}\n")
                   f.write(f"has_ads={'true' if count > 0 else 'false'}\n")
