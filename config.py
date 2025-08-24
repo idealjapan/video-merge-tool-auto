@@ -43,6 +43,15 @@ class Config:
                 "C:/Windows/Fonts/arial.ttf"
             ]
     
+    @staticmethod
+    def get_font_path():
+        """最初に見つかった有効なフォントパスを返す"""
+        font_paths = Config.get_font_paths()
+        for font_path in font_paths:
+            if os.path.exists(font_path):
+                return font_path
+        return None
+    
     # デフォルトテキスト
     DEFAULT_DISCLAIMER_TEXT = "※結果には個人差があり成果を保証するものではありません"
     
