@@ -49,7 +49,7 @@ python production_disapproval_handler.py
 ### 環境変数の設定
 ```bash
 export GOOGLE_APPLICATION_CREDENTIALS="credentials/google_service_account.json"
-export REPLICATE_API_TOKEN="r8_b8yPR5AADdMQz0VArWeBNE6zdfjJ4s22rguio"
+export REPLICATE_API_TOKEN="your_replicate_api_token_here"
 ```
 
 ## コアアーキテクチャ
@@ -181,7 +181,7 @@ credentials/
 ```
 
 ### API Keys
-- Replicate API Token: `r8_b8yPR5AADdMQz0VArWeBNE6zdfjJ4s22rguio`
+- Replicate API Token: GitHub Secretsで管理（REPLICATE_API_TOKEN）
 
 ### スプレッドシートID
 - 承認ステータス: `1yxEYTX-9e9PkIPCh62uJTvAigzyDHv_sSjTfv3qU9M0`

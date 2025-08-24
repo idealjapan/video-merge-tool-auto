@@ -20,7 +20,7 @@ sys.path.insert(0, str(project_root))
 if 'GOOGLE_APPLICATION_CREDENTIALS' not in os.environ:
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = str(project_root / 'credentials' / 'google_service_account.json')
 if 'REPLICATE_API_TOKEN' not in os.environ:
-    os.environ['REPLICATE_API_TOKEN'] = 'r8_b8yPR5AADdMQz0VArWeBNE6zdfjJ4s22rguio'
+    os.environ['REPLICATE_API_TOKEN'] = 'your_replicate_api_token_here'  # GitHub Secretsで設定
 
 from automation.approval_status_reader import ApprovalStatusReader
 from automation.google_drive_finder import GoogleDriveFinder

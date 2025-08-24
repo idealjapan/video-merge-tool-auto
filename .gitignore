@@ -52,6 +52,7 @@ test_*.jpeg
 # Archive
 archive/
 old_code/
+backup_*/
 
 # Backups
 *.bak
