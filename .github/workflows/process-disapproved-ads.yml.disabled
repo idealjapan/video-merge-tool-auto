@@ -1,0 +1,6 @@
+# このワークフローは無効化されています
+# 高速版（process-disapproved-ads-fast.yml）を使用してください
+# 
+# 再度有効にする場合：
+# 1. このファイルを process-disapproved-ads.yml にリネーム
+# 2. process-disapproved-ads-fast.yml を削除またはリネーム
