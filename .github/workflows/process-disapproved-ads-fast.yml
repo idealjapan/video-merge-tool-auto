@@ -1,0 +1,107 @@
+name: Process Disapproved Ads (Fast)
+
+on:
+  # 手動実行
+  workflow_dispatch:
+  
+  # スケジュール実行: 50分ごと
+  schedule:
+    - cron: '0,50 * * * *'  # UTC時間で毎時0分と50分に実行
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python with cache
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'  # pipキャッシュを有効化
+      
+      - name: Install minimal dependencies for check
+        run: |
+          python -m pip install --upgrade pip
+          pip install gspread google-auth
+      
+      - name: Setup credentials for check
+        run: |
+          mkdir -p credentials
+          echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}' > credentials/google_service_account.json
+      
+      - name: Quick check for disapproved ads
+        id: check
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: credentials/google_service_account.json
+        run: |
+          echo "🔍 Checking for disapproved ads..."
+          python3 << 'EOF'
+          import sys
+          import os
+          sys.path.insert(0, os.getcwd())
+          try:
+              from automation.approval_status_reader import ApprovalStatusReader
+              reader = ApprovalStatusReader()
+              ads = reader.get_disapproved_ads()
+              count = len(ads)
+              print(f"Found {count} disapproved ads")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"count={count}\n")
+                  f.write(f"has_ads={'true' if count > 0 else 'false'}\n")
+              if count == 0:
+                  print("✅ No disapproved ads. Exiting early to save time.")
+                  sys.exit(0)
+          except Exception as e:
+              print(f"Error during check: {e}")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("has_ads=false\n")
+              sys.exit(0)
+          EOF
+      
+      # 以下は不承認広告がある場合のみ実行
+      - name: Install full dependencies
+        if: steps.check.outputs.has_ads == 'true'
+        run: |
+          pip install -r requirements.txt
+          
+          # ffmpegと日本語フォントのインストール（必要な場合のみ）
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk
+      
+      - name: Setup all credentials
+        if: steps.check.outputs.has_ads == 'true'
+        run: |
+          echo "${{ secrets.TOKEN_NB_PICKLE }}" | base64 -d > credentials/token_NB.pickle
+          echo "${{ secrets.TOKEN_OM_PICKLE }}" | base64 -d > credentials/token_OM.pickle
+          echo "${{ secrets.TOKEN_SBC_PICKLE }}" | base64 -d > credentials/token_SBC.pickle
+          echo '${{ secrets.CLIENT_SECRETS_JSON }}' > credentials/client_secrets.json
+      
+      - name: Create output directories
+        if: steps.check.outputs.has_ads == 'true'
+        run: |
+          mkdir -p ad-videos outputs logs
+      
+      - name: Process disapproved ads
+        if: steps.check.outputs.has_ads == 'true'
+        timeout-minutes: 15
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: credentials/google_service_account.json
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+        run: |
+          echo "🚀 Processing ${{ steps.check.outputs.count }} disapproved ads..."
+          python3 production_disapproval_handler.py
+          echo "✅ Processing complete"
+      
+      - name: Upload logs if failed
+        if: failure() && steps.check.outputs.has_ads == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-logs
+          path: |
+            logs/
+            *.log
+          retention-days: 7
