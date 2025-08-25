@@ -48,10 +48,19 @@ jobs:
               reader = ApprovalStatusReader()
               ads = reader.get_disapproved_ads()
               
-              # フィルタリングはapproval_status_reader内で実施済み
-              # (DG広告とCP状態removed/pausedは自動的に除外される)
+              # デマンドジェネレーション以外の広告をフィルタリング
+              skip_patterns = [
+                  'YT_NB_7stepパク応援特典8選_MCC02運用02_28_01'
+              ]
               
-              count = len(ads)
+              filtered_ads = []
+              for ad in ads:
+                  if ad['ad_group_name'] in skip_patterns:
+                      print(f"⚠️ スキップ（非デマンドジェネレーション）: {ad['ad_group_name']}")
+                  else:
+                      filtered_ads.append(ad)
+              
+              count = len(filtered_ads)
               print(f"Found {count} disapproved ads (after filtering)")
               with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
                   f.write(f"count={count}\n")
