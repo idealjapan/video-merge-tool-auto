@@ -75,7 +75,7 @@ class VideoMergerWithAutoBG:
         try:
             # Replicate API呼び出し
             headers = {
-                'Authorization': f'Token {self.replicate_api_token}',
+                'Authorization': f'Bearer {self.replicate_api_token}',
                 'Content-Type': 'application/json'
             }
             

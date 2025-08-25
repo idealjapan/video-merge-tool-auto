@@ -90,6 +90,19 @@ class ApprovalStatusReader:
                     continue
                 
                 ad_group_name = str(row[0]).strip()  # A列: 広告グループ名
+                
+                # CP状態の確認（AA列 = インデックス26）
+                if len(row) > 26:
+                    cp_status = str(row[26]).strip().lower()  # AA列: CP状態
+                    if cp_status in ['removed', 'paused']:
+                        logger.info(f"CP状態が{cp_status}のためスキップ: {ad_group_name}")
+                        continue
+                
+                # デマンドジェネレーションキャンペーンをスキップ
+                if 'DG' in ad_group_name:
+                    logger.info(f"デマンドジェネレーション広告をスキップ: {ad_group_name}")
+                    continue
+                
                 approval_status = str(row[27]).strip()  # AB列: 承認ステータス
                 account_id = str(row[25]).strip().replace('-', '')  # Z列: アカウントID
                 

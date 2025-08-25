@@ -12,15 +12,17 @@ from pathlib import Path
 from datetime import datetime
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from dotenv import load_dotenv
 
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
+# .envファイルから環境変数を読み込み
+load_dotenv()
+
 # 環境変数が設定されていない場合のみデフォルト値を設定
 if 'GOOGLE_APPLICATION_CREDENTIALS' not in os.environ:
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = str(project_root / 'credentials' / 'google_service_account.json')
-if 'REPLICATE_API_TOKEN' not in os.environ:
-    os.environ['REPLICATE_API_TOKEN'] = 'your_replicate_api_token_here'  # GitHub Secretsで設定
 
 from automation.approval_status_reader import ApprovalStatusReader
 from automation.google_drive_finder import GoogleDriveFinder
