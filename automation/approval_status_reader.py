@@ -98,11 +98,6 @@ class ApprovalStatusReader:
                         logger.info(f"CP状態が{cp_status}のためスキップ: {ad_group_name}")
                         continue
                 
-                # デマンドジェネレーションキャンペーンをスキップ
-                if 'DG' in ad_group_name:
-                    logger.info(f"デマンドジェネレーション広告をスキップ: {ad_group_name}")
-                    continue
-                
                 approval_status = str(row[27]).strip()  # AB列: 承認ステータス
                 account_id = str(row[25]).strip().replace('-', '')  # Z列: アカウントID
                 
