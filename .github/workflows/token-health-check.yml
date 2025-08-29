@@ -1,0 +1,35 @@
+name: Token Health Check
+
+on:
+  schedule:
+    # 毎週月曜日の午前9時（JST）に実行
+    - cron: '0 0 * * 1'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  check-tokens:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        pip install google-auth google-auth-oauthlib google-auth-httplib2
+        pip install google-api-python-client gspread
+    
+    - name: Check token health
+      run: |
+        python token_health_check.py --refresh
+      continue-on-error: true
+    
+    - name: Send notification if unhealthy
+      if: failure()
+      run: |
+        echo "⚠️ トークンの健全性チェックで問題が検出されました"
+        echo "GitHub Actionsのログを確認してください"
