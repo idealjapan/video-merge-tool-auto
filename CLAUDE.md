@@ -221,5 +221,101 @@ credentials/
 - 広告キュー: `1MdDrJFrzkz1N6ccgZN2mhL_SGh0a7qUKBJJ5B6gm70U`（広告キューシート）
 
 ### GitHub
-- リポジトリ: https://github.com/idealjapan/video-merger
+- リポジトリ: https://github.com/idealjapan/video-merge-tool-auto
 - 用途: チャンネル所有者への認証ガイド共有
+
+## 2025年8月25日の作業記録と決定事項
+
+### 実装した機能
+1. **CP状態によるフィルタリング機能**
+   - `approval_status_reader.py`にCP状態（AA列）の判定ロジックを追加
+   - CP状態が`removed`または`paused`の広告を自動的にスキップ
+   - 不要な広告の処理を防ぎ、システム効率を向上
+
+2. **特定広告のスキップ処理**
+   - `YT_NB_7stepパク応援特典8選_MCC02運用02_28_01`をスキップ（非デマンドジェネレーション広告）
+   - `production_disapproval_handler.py`と GitHub Actions ワークフローに実装
+   - **重要**: DG（デマンドジェネレーション）広告はスキップしない（処理対象）
+
+3. **GitHub Actions実行頻度の最適化**
+   - 問題: `'0,50 * * * *'`設定により10分と50分の交互間隔で実行されていた
+   - 解決: `'*/50 * * * *'`に変更し、均等な50分間隔に修正
+   - 1日約29回の実行頻度を維持しつつ、実行タイミングを均等化
+
+### 現在のフィルタリング条件（重要）
+- ✅ CP状態が`removed`または`paused`の広告をスキップ
+- ✅ 特定の非デマンド広告（`YT_NB_7stepパク応援特典8選_MCC02運用02_28_01`）をスキップ  
+- ✅ DG（デマンドジェネレーション）広告は処理対象（スキップしない）
+
+### 今後解決が必要な課題
+
+#### 1. YouTube認証の完全化（最優先）
+- **現状**: NBチャンネルのみ動作確認済み
+- **必要な作業**: 
+  - OM/SBCチャンネルの認証取得
+  - チャンネル所有者による正しいビジネスチャンネルでの認証
+  - 各チャンネルのtoken_*.pickleファイル生成
+
+#### 2. Replicate API トークンの設定
+- **現状**: .envファイルにプレースホルダーのみ
+- **必要な作業**: 本番用のReplicate APIトークンを設定
+- **影響**: 背景動画生成機能が動作しない
+
+#### 3. アカウントID管理の拡充
+- **現状**: NBのアカウントID（7042358345）のみ確認済み
+- **必要な作業**: OM、SBC、RLのアカウントID確認と登録
+- **実装済み**: スプレッドシートZ列からの自動取得機能
+
+### 実装予定の機能
+
+1. **エラー通知機能**
+   - 処理失敗時のSlack/Email通知
+   - エラーログの集約と分析
+
+2. **処理履歴の可視化**
+   - 処理成功/失敗の統計ダッシュボード
+   - 月次レポート生成機能
+
+3. **動画処理の最適化**
+   - 並列処理による高速化
+   - キャッシュ機能の実装
+
+### 運用上の注意事項
+
+1. **GitHub Actions の実行頻度**
+   - 現在: 50分ごと（1日約29回）
+   - 必要に応じて調整可能（コスト vs レスポンス時間のバランス）
+
+2. **スキップ対象の管理**
+   - 特定広告のハードコーディングは最小限に
+   - 可能な限りスプレッドシートでの管理に移行を検討
+
+3. **監視項目**
+   - GitHub Actions の実行履歴（`gh run list`）
+   - キューシートの処理状況
+   - YouTube アップロードの成功率
+
+### 開発環境の整備状況
+
+- ✅ GitHub CLI インストール済み（v2.78.0）
+- ✅ idealjapanアカウントで認証済み
+- ✅ 実行履歴の確認が可能
+
+### 次回作業開始時のチェックリスト
+
+1. 不承認広告の確認
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=credentials/google_service_account.json \
+python -c "from automation.approval_status_reader import ApprovalStatusReader; reader = ApprovalStatusReader(); print(f'不承認広告: {len(reader.get_disapproved_ads())}件')"
+```
+
+2. GitHub Actions の実行状況確認
+```bash
+gh run list --workflow=process-disapproved-ads-fast.yml --limit 5 --repo idealjapan/video-merge-tool-auto
+```
+
+3. キューの処理状況確認
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=credentials/google_service_account.json \
+python -c "from automation.simple_queue_manager import SimpleQueueManager; queue = SimpleQueueManager(); print(queue.get_queue_status())"
+```

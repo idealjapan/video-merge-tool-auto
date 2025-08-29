@@ -13,6 +13,7 @@ from datetime import datetime
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from dotenv import load_dotenv
+from youtube_auth_manager import YouTubeAuthManager
 
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
@@ -99,28 +100,20 @@ def process_single_ad(ad, index, total):
     # 4. YouTubeアップロード
     print("\n4️⃣ YouTubeアップロード...")
     
-    # 案件名に応じてトークンファイルを選択
-    token_mapping = {
-        'NB': 'token_NB.pickle',
-        'OM': 'token_OM.pickle',
-        'SBC': 'token_SBC.pickle',
-        'RL': 'token_RL.pickle'
-    }
-    
-    token_filename = token_mapping.get(project_name, 'token_NB.pickle')
-    token_file = project_root / 'credentials' / token_filename
-    
-    if not token_file.exists():
-        print(f"❌ {project_name}用のトークンファイルがありません: {token_filename}")
-        print(f"   利用可能なトークン: {', '.join([f.name for f in (project_root / 'credentials').glob('token_*.pickle')])}")
-        return False
-    
     print(f"   使用チャンネル: {project_name}")
     
-    with open(token_file, 'rb') as token:
-        creds = pickle.load(token)
+    # 新しい認証マネージャーを使用（自動リフレッシュ機能付き）
+    auth_manager = YouTubeAuthManager(project_name)
     
-    youtube = build('youtube', 'v3', credentials=creds)
+    try:
+        youtube = auth_manager.get_authenticated_service()
+    except FileNotFoundError as e:
+        print(f"❌ {project_name}チャンネルの認証ファイルが見つかりません")
+        print(f"   python youtube_auth_manager.py --channel {project_name} を実行してください")
+        return False
+    except Exception as e:
+        print(f"❌ 認証エラー: {e}")
+        return False
     
     title = search_name
     description = ""
