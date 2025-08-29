@@ -170,22 +170,21 @@ class GoogleDriveFinder:
         特定の案件フォルダから動画を検索してダウンロード
         """
         try:
-            # 複数の検索パターンを試行
-            search_patterns = [
-                video_name,  # 完全一致
-                video_name.replace('_', ' '),  # アンダースコアをスペースに
-            ]
+            import unicodedata
             
-            # 動画名から一部を抽出して検索（例：「愛されクリエイター」など）
-            if '_' in video_name:
-                main_parts = video_name.split('_')[:2]  # 最初の2パーツ
-                search_patterns.append('_'.join(main_parts))
+            # Unicode正規化を適用（NFD形式）- Google Driveのファイル名形式に合わせる
+            search_patterns = [
+                unicodedata.normalize('NFD', video_name + '.mp4'),  # NFD形式で完全一致
+                unicodedata.normalize('NFD', video_name),  # 拡張子なし
+                video_name + '.mp4',  # 元の形式でも試す
+                video_name,
+            ]
             
             for pattern in search_patterns:
                 logger.info(f"{project}フォルダで検索: {pattern}")
                 
-                # クエリを構築
-                query = f"'{folder_id}' in parents and name contains '{pattern}'"
+                # 完全一致検索を優先
+                query = f"'{folder_id}' in parents and name = '{pattern}'"
                 logger.info(f"クエリ: {query}")
                 
                 # supportsAllDrivesとincludeItemsFromAllDrivesを追加
